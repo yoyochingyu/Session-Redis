@@ -4,8 +4,9 @@
     </head>
     <body>
         <h1>Welcome</h1>
-        <%if(views) {%>
-            <p>views:<%=views%></p>
+        <%if(userInfo) {%>
+            <h3>Good evening, <%=userInfo.name%></h3>
+            <p>views:<%=userInfo.views%></p>
             <button><a href = "/logout">Logout</a></button>
         <%}else{%>
             <button><a href = "/login">Login</a></button>

@@ -20,7 +20,7 @@ redisClient.on("error",(err)=>{
 // Session settings
 app.use(session({
 	cookie:{maxAge:600000}, // 10 mins
-	name:'cookie8080', // cookie name
+	name:'cookie8080', // sign之前的 cookie name(=sessionID)<-->Browser那端看到的事signed的cookie
 	resave:false,
 	saveUninitialized:false,
 	secret:'Mary has a little doll'
@@ -31,10 +31,13 @@ app.use(session({
 //===========================
 
 app.get("/",(req,res)=>{
-	if(req.session.state == 1){
-		var views = req.session.views;
+	if(req.session.user){
+		var userInfo = {
+			views:req.session.views,
+			name:req.session.user
+		};
 	}
-	res.render("index",{views:views});
+	res.render("index",{userInfo:userInfo});
 });
 
 app.get("/register",(req,res)=>{
@@ -48,51 +51,55 @@ app.get("/login",(req,res)=>{
 app.post("/register",(req,res)=>{
 	let email = req.body.email;
 	let password = req.body.password;
-	redisClient.set('userEmail',email,redis.print); //future modify: not only one user
-	redisClient.set('userPassword',password,redis.print);
-	res.redirect("/");
+	redisClient.hmset(`${email}`,'password',`${password}`,'views',0,(err)=>{
+		if(err){
+			console.log(err);
+		}
+		else{
+			res.redirect("/");
+		}
+	}); 
 });
 
 
 app.post("/login",(req,res)=>{
 	let inputEmail = req.body.email;
 	let inputPassword = req.body.password;
-	redisClient.get('userEmail',(err,result)=>{ // 取出唯一一位使用者的email
+	redisClient.hgetall(`${inputEmail}`,(err,result)=>{ // Search redis with inputEmail to see if there's record in redis
 		if(err){
 			console.log(err);
 		}
 		else{
-			if(result==inputEmail){ //進行比對
-				redisClient.get('userPassword',(err,passwordResult)=>{ //取出唯一一位使用者的密碼
-					if(err){
-						console.log(err);
+			if(result==null){ // Null means can't find anyone with this email in redis
+				res.send("User not found!");
+			}
+			else{ // Found this user in the redis database, next:compare input password
+				if(result.password === inputPassword){ // password is valid, start **session **
+					req.session.user = inputEmail; // write session data in Server side(default : memStore)
+					if(result.views == 0){ //Use double equal because redis save data with **string!!!**
+						req.session.views = 1;
 					}
 					else{
-						if(passwordResult==inputPassword){ //比對正確 //??
-							req.session.state = 1; //已登入
-							if(req.session.views){
-								req.session.views++;
-							}
-							else{
-								req.session.views = 1;//更改session狀態
-							}
-							res.redirect("/");
-						}
-						else{
-							res.send("Wrong Password");
-						}
+						req.session.views=parseInt(result.views)+1;
 					}
-				})
-			}
-			else{
-				res.send("You are not the only one user!");
+					redisClient.hincrby(`${inputEmail}`,'views',1,(err)=>{ //save views to redis
+						if(err){
+							console.log(err);
+						}
+					});
+					res.redirect("/");
+				}
+				else{
+					res.send("Wrong Password!");
+				}
 			}
 		}
 	});
 });
 
 app.get("/logout",(req,res)=>{
-	req.session.state=0;
+	req.session.user=null;
+	req.session.views = 0;
 	res.redirect("/");
 });
 
