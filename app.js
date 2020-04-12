@@ -3,7 +3,8 @@ const express = require("express"),
 						session = require('express-session'),
 						bodyParser = require("body-parser"),
 						redis = require("redis"),
-						redisClient = redis.createClient();
+						redisClient = redis.createClient(),
+						redisStore = require('connect-redis')(session);
 
 // APP CONFIG
 app.set("view engine","ejs");
@@ -23,7 +24,8 @@ app.use(session({
 	name:'cookie8080', // sign之前的 cookie name(=sessionID)<-->Browser那端看到的事signed的cookie
 	resave:false,
 	saveUninitialized:false,
-	secret:'Mary has a little doll'
+	secret:'Mary has a little doll',
+	store: new redisStore({client:redisClient})
 }));
 
 //===========================
