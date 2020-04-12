@@ -1,0 +1,15 @@
+<html>
+    <head>
+        <title>Index</title>
+    </head>
+    <body>
+        <h1>Welcome</h1>
+        <%if(views) {%>
+            <p>views:<%=views%></p>
+            <button><a href = "/logout">Logout</a></button>
+        <%}else{%>
+            <button><a href = "/login">Login</a></button>
+            <button><a href = "/register">Register</a></button>
+        <%}%>
+    </body>
+</html>
